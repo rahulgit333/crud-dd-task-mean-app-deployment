@@ -1,0 +1,58 @@
+name: MEAN APP CI/CD
+
+on:
+  push:
+    branches:
+      - main
+
+env:
+  DOCKER_USERNAME: rahuldanodia
+
+jobs:
+
+  build-and-push:
+
+    runs-on: ubuntu-latest
+
+    steps:
+
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Docker login
+      run: echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u rahuldanodia --password-stdin
+
+    - name: Build backend
+      run: docker build -t rahuldanodia/mean-backend:latest ./backend
+
+    - name: Build frontend
+      run: docker build -t rahuldanodia/mean-frontend:latest ./frontend
+
+    - name: Push backend
+      run: docker push rahuldanodia/mean-backend:latest
+
+    - name: Push frontend
+      run: docker push rahuldanodia/mean-frontend:latest
+
+
+  deploy:
+
+    needs: build-and-push
+
+    runs-on: ubuntu-latest
+
+    steps:
+
+    - name: Deploy to AWS VM
+      uses: appleboy/ssh-action@v1.0.3
+      with:
+        host: ${{ secrets.AWS_HOST }}
+        username: ubuntu
+        key: ${{ secrets.AWS_SSH_KEY }}
+        script: |
+
+          cd crud-dd-task-mean-app-deployment
+
+          docker-compose pull
+
+          docker-compose up -d
